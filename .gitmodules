@@ -1,0 +1,3 @@
+[submodule "GS1500M/ATParser"]
+	path = GS1500M/ATParser
+	url = https://github.com/slashdevteam/ATParser.git
