@@ -17,6 +17,10 @@
 #include "GS1500M.h"
 
 // mbed target header should provide resetWifi() function
+extern "C"
+{
+    extern void resetWifi();
+}
 
 const char HOST_APP_ESC_CHAR = 0x1B;
 static const char BULKDATAIN[] = {0x1b};
