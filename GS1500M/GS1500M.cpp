@@ -175,6 +175,13 @@ const char *GS1500M::getNetmask()
     return netmaskBuffer;
 }
 
+int GS1500M::dnslookup(const char *name, char* address)
+{
+    parser.send("AT+DNSLOOKUP=%s", name);
+    int ret = parser.scanf("\nIP:%17s\n", address);
+    return parser.recv("OK");
+}
+
 int8_t GS1500M::getRSSI()
 {
     int8_t rssi = 0;

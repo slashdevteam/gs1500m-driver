@@ -92,6 +92,15 @@ int GS1500MInterface::set_credentials(const char *ssid, const char *pass, nsapi_
     return 0;
 }
 
+nsapi_error_t GS1500MInterface::gethostbyname(const char *name, SocketAddress *address, nsapi_version_t version)
+{
+    gsat.setTimeout(GS1500M_MISC_TIMEOUT);
+    char ipBuffer[18] = {0};
+    int ret = gsat.dnslookup(name, ipBuffer);
+    address->set_ip_address(ipBuffer);
+    return (ret != 1);
+}
+
 int GS1500MInterface::set_channel(uint8_t channel)
 {
     return NSAPI_ERROR_UNSUPPORTED;

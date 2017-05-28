@@ -56,8 +56,8 @@ public:
 
     virtual int scan(WiFiAccessPoint* res, unsigned count);
 
-    using NetworkInterface::gethostbyname;
-    using NetworkInterface::add_dns_server;
+    // override NetworkStack to use GS1500M DNS
+    nsapi_error_t gethostbyname(const char *name, SocketAddress *address, nsapi_version_t version = NSAPI_UNSPEC);
 
 protected:
 

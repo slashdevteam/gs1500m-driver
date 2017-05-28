@@ -42,6 +42,8 @@ public:
     const char* getNetmask();
     int8_t getRSSI();
 
+    int dnslookup(const char *name, char* address);
+
     int scan(WiFiAccessPoint* res, unsigned limit);
 
     bool open(const char* type, int& id, const char* addr, int port);
