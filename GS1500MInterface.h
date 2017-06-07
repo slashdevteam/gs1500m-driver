@@ -12,6 +12,13 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
+ * This file has been adapted from ESP8266 mbed OS driver to support
+ * GS1500M WiFi module over UART
+ *
+ * Due to huge differences between ESP and GS AT interfaces this driver
+ * does not use ATParser from mbed.
  */
 
 #pragma once
@@ -24,13 +31,11 @@ constexpr int GS1500M_SOCKET_COUNT = 16;
 using SocketSend = std::function<int(void* handle, const void* data, unsigned size)>;
 using SocketCallback = std::function<void(const void* data, unsigned size)>;
 
-/** GS1500MInterface class
- *  Implementation of the NetworkStack for the GS1500M
- */
+
 class GS1500MInterface : public NetworkStack, public WiFiInterface
 {
 public:
-    GS1500MInterface(PinName tx, PinName rx, int baud, bool debug);
+    GS1500MInterface(PinName tx, PinName rx, int baud);
     virtual ~GS1500MInterface() = default;
 
     // Interface implementations
@@ -43,7 +48,7 @@ public:
                         const char* pass,
                         nsapi_security_t security,
                         uint8_t channel);
-    // Will use previous configuration (SSID, pass and mode)
+
     virtual int connect();
     virtual int disconnect();
 
@@ -58,6 +63,7 @@ public:
 
     // override NetworkStack to use GS1500M DNS
     nsapi_error_t gethostbyname(const char *name, SocketAddress *address, nsapi_version_t version = NSAPI_UNSPEC);
+
 
 protected:
 

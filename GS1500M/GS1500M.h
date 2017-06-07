@@ -12,19 +12,26 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
+ * This file has been adapted from ESP8266 mbed OS driver to support
+ * GS1500M WiFi module over UART
+ *
+ * Due to huge differences between ESP and GS AT interfaces this driver
+ * does not use ATParser from mbed.
  */
 
 #pragma once
 
-#include "ATParser.h"
+#include "bufferedat.h"
+#include "WiFiAccessPoint.h"
 
 class GS1500M
 {
 public:
     GS1500M(PinName tx,
             PinName rx,
-            int baud,
-            bool debug);
+            int baud);
 
     void aterror();
 
@@ -69,8 +76,7 @@ private:
     void socketDisconnected();
 
 private:
-    BufferedSerial serial;
-    ATParser parser;
+    BufferedAT parser;
     int mode;
 
     struct packet
@@ -86,4 +92,5 @@ private:
     char gatewayBuffer[16];
     char netmaskBuffer[16];
     char macBuffer[18];
+    Callback<void()> stackCallback;
 };

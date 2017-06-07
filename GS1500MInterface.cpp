@@ -12,30 +12,34 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
+ * This file has been adapted from ESP8266 mbed OS driver to support
+ * GS1500M WiFi module over UART
+ *
+ * Due to huge differences between ESP and GS AT interfaces this driver
+ * does not use ATParser from mbed.
  */
 
 #include <string.h>
 #include "GS1500MInterface.h"
 
-// Various timeouts for different GS1500M operations
 const uint32_t GS1500M_CONNECT_TIMEOUT = 15000;
 const uint32_t GS1500M_SEND_TIMEOUT    = 500;
-const uint32_t GS1500M_RECV_TIMEOUT    = 100;
+const uint32_t GS1500M_RECV_TIMEOUT    = 500;
 const uint32_t GS1500M_MISC_TIMEOUT    = 500;
 
 using namespace std::placeholders;
 
 GS1500MInterface::GS1500MInterface(PinName tx,
                                    PinName rx,
-                                   int baud,
-                                   bool debug)
-    : gsat(tx, rx, baud, debug)
+                                   int baud)
+    : gsat(tx, rx, baud)
 {
     memset(_ids, 0, sizeof(_ids));
     memset(_cbs, 0, sizeof(_cbs));
     socketSend[0] = std::bind(&GS1500MInterface::tcp_socket_send, this, _1, _2, _3);
     socketSend[1] = std::bind(&GS1500MInterface::udp_socket_send, this, _1, _2, _3);
-    gsat.attach(this, &GS1500MInterface::event);
 }
 
 int GS1500MInterface::connect(const char *ssid,
@@ -95,7 +99,7 @@ int GS1500MInterface::set_credentials(const char *ssid, const char *pass, nsapi_
 nsapi_error_t GS1500MInterface::gethostbyname(const char *name, SocketAddress *address, nsapi_version_t version)
 {
     gsat.setTimeout(GS1500M_MISC_TIMEOUT);
-    char ipBuffer[18] = {0};
+    char ipBuffer[16] = {0};
     int ret = gsat.dnslookup(name, ipBuffer);
     address->set_ip_address(ipBuffer);
     return (ret != 1);
@@ -164,7 +168,6 @@ int GS1500MInterface::socket_open(void **handle, nsapi_protocol_t proto)
 
 int GS1500MInterface::init_local_socket(void **handle, nsapi_protocol_t proto, int _idgs)
 {
-    // Look for an unused socket
     int id = -1;
 
     for (int i = 0; i < GS1500M_SOCKET_COUNT; i++)
