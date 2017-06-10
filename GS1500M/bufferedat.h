@@ -24,9 +24,7 @@ public:
           oob(osPriorityHigh, 8192),
           ob(2*1512),
           rb(512),
-          // os(std::make_unique<uint8_t []>(256)),
-          // rs(std::make_unique<uint8_t []>(256)),
-          timeout(0),
+          timeout(100),
           pushed(0)
     {
         oob.start(callback(this, &BufferedAT::checkOob));
@@ -105,7 +103,7 @@ public:
             else
             {
                 // we need to return not consumed character
-                // ob.rewind(1);
+                ob.rewind(1);
                 break;
             }
 

@@ -407,7 +407,7 @@ bool GS1500M::writeable()
 
 void GS1500M::attach(Callback<void()> func)
 {
-    assert(false); // currently socket callbacks in mbed are useless, so disable them
+    assert(false); // currently socket callbacks in mbed are useless, so ban usage
 }
 
 bool GS1500M::recv_ap(nsapi_wifi_ap_t *ap)
