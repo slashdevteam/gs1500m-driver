@@ -1,16 +1,18 @@
 #pragma once
 
 #include "PinNames.h"
-#include "Serial.h"
+#include "RawSerial.h"
 #include "Thread.h"
 #include "Callback.h"
 #include "Timer.h"
+#include "PlatformMutex.h"
 #include "specialsequence.h"
 #include "buffer.h"
 #include <regex>
 #include <vector>
+#include <cstdarg>
 
-using mbed::Serial;
+using mbed::RawSerial;
 using mbed::callback;
 using mbed::Callback;
 using mbed::Timer;
@@ -35,7 +37,7 @@ public:
     {
         va_list args;
         va_start(args, command);
-        bool res = serial.vprintf(command, args);
+        bool res = vsend(command, args);
         va_end(args);
         return res;
     }
@@ -230,6 +232,23 @@ private:
         }
     }
 
+    bool vsend(const char *format, va_list args)
+    {
+        if(vsprintf(sendBuffer, format, args) < 0)
+        {
+            return false;
+        }
+
+        int i = 0;
+        for( ; sendBuffer[i]; i++)
+        {
+            if(serial.putc(sendBuffer[i]) < 0)
+            {
+                return false;
+            }
+        }
+        return (i != 0);
+    }
 
 private:
     void lock() {
@@ -241,12 +260,11 @@ private:
     }
 
 private:
-    Serial serial;
+    RawSerial serial;
     Thread oob;
     Buffer ob;
     Buffer rb;
-    // ByteBuffer os;
-    // ByteBuffer rs;
+    char sendBuffer[256];
 
     uint32_t timeout;
     volatile int pushed;
