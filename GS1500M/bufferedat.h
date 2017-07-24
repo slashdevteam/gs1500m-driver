@@ -125,13 +125,12 @@ public:
                 return -1;
             }
             data[i] = c;
-            if(i >= delimLen && std::strncmp(&data[i - delimLen], delim, delimLen) == 0)
+            if(i >= delimLen && std::strncmp(&data[i - delimLen + 1], delim, delimLen) == 0)
             {
                 data[i] = '\0';
-                // rb.rewind(1);
-                i--;
                 break;
             }
+
         }
         return i;
     }
