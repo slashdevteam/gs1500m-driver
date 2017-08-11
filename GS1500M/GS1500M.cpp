@@ -23,11 +23,30 @@
 
 #include "GS1500M.h"
 
-// mbed target header should provide resetWifi() function
-extern "C"
+#include "gpio_api.h"
+#include "mbed_wait_api.h"
+extern "C" WEAK void resetWifi()
 {
-    extern void resetWifi();
+    {
+        gpio_t gsPD;
+        gpio_init_in(&gsPD, PTD5);
+        while(!gpio_read(&gsPD))
+        {};
+    }
+
+    {
+        gpio_t gsPD;
+        gpio_init_out(&gsPD, PTD5);
+        gpio_write(&gsPD, 0);
+    }
+
+    {
+        gpio_t gsPD;
+        gpio_init_in(&gsPD, PTD5);
+        wait(.3);
+    }
 }
+
 
 const char HOST_APP_ESC_CHAR = 0x1B;
 static const char BULKDATAIN[] = {HOST_APP_ESC_CHAR, 'Z'};
