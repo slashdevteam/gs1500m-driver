@@ -262,21 +262,9 @@ bool GS1500M::bind(const char *type, int& id, int port)
     return parser.recv("OK");
 }
 
-bool GS1500M::sendTcp(int id, const void *data, uint32_t amount)
+bool GS1500M::send(int id, const void *data, uint32_t amount)
 {
-    if(parser.send("%c%c%.1d%.4d", HOST_APP_ESC_CHAR, 'Z', id, amount)
-       && parser.write((char*)data, (int)amount)
-       && parser.recv(DATASENDOK))
-    {
-        return true;
-    }
-
-    return false;
-}
-
-bool GS1500M::sendUdp(int id, const char* addr, int port, const void *data, uint32_t amount)
-{
-    if(parser.send("%c%c%.1d%.4d", HOST_APP_ESC_CHAR, 'Z', id, amount)
+    if(parser.send("%c%c%.1x%.4d", HOST_APP_ESC_CHAR, 'Z', id, amount)
        && parser.write((char*)data, (int)amount)
        && parser.recv(DATASENDOK))
     {
@@ -366,7 +354,7 @@ int32_t GS1500M::recv(int id, void *data, uint32_t amount)
 
 bool GS1500M::close(int id)
 {
-    if(parser.send("AT+NCLOSE=%d\n", id)
+    if(parser.send("AT+NCLOSE=%x\n", id)
        && parser.recv("OK"))
     {
         return true;

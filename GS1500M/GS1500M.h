@@ -68,8 +68,7 @@ public:
 
     bool open(const char* type, int& id, const char* addr, int port);
     bool bind(const char* type, int& id, int port);
-    bool sendTcp(int id, const void* data, uint32_t amount);
-    bool sendUdp(int id, const char* addr, int port, const void* data, uint32_t amount);
+    bool send(int id, const void* data, uint32_t amount);
     int32_t recv(int id, void* data, uint32_t amount);
     bool accept(int id, int& clientId, char* addr);
     bool close(int id);
