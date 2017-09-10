@@ -27,7 +27,6 @@
 #include "GS1500M.h"
 #include <functional>
 
-constexpr int GS1500M_SOCKET_COUNT = 16;
 using SocketSend = std::function<int(void* handle, const void* data, unsigned size)>;
 using SocketCallback = std::function<void(const void* data, unsigned size)>;
 

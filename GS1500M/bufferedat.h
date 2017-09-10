@@ -23,14 +23,14 @@ class BufferedAT
 public:
     BufferedAT(PinName tx, PinName rx, size_t baud)
         : serial(tx, rx, baud),
-          oob(osPriorityHigh, 8192),
-          ob(2*1512),
+          oob(osPriorityHigh, 8192/2),
+          ob(4*1512),
           rb(512),
           timeout(100),
           pushed(0)
     {
         oob.start(callback(this, &BufferedAT::checkOob));
-        serial.attach(callback(this, &BufferedAT::bufferRx));
+        serial.attach(callback(this, &BufferedAT::bufferRx), mbed::SerialBase::RxIrq);
     }
 
     bool send(const char *command, ...)
@@ -44,7 +44,7 @@ public:
 
     bool recv(const char* sequence)
     {
-        return recveive(rb, sequence);
+        return recveiveSequence(rb, sequence);
     }
 
     void registerSequence(const std::string& _sequence, Callback<void()> callback)
@@ -55,84 +55,32 @@ public:
     size_t write(const char *data, size_t size)
     {
         size_t i = 0;
-        for (; i < size; ++i)
+        lock();
+        for(; i < size; ++i)
         {
-            if (serial.putc(data[i]) < 0) {
-                return -1;
+            if(serial.putc(data[i]) < 0)
+            {
+                i = 0;
+                break;
             }
         }
+        unlock();
         return i;
     }
 
     size_t read(char *data, size_t size)
     {
-        size_t i = 0;
-        for ( ; i < size; i++) {
-            int c = getc(rb);
-            if (c < 0) {
-                return -1;
-            }
-            data[i] = c;
-        }
-        return i;
+        return read(rb, data, size);
     }
 
     size_t readData(char *data, size_t size)
     {
-        size_t i = 0;
-        for ( ; i < size; i++) {
-            int c = getc(ob);
-            if (c < 0) {
-                return -1;
-            }
-            data[i] = c;
-        }
-        return i;
-    }
-
-    size_t readDigits(char *data, size_t size)
-    {
-        size_t i = 0;
-        for ( ; i < size; i++) {
-            int c = getc(ob);
-            if (c < 0) {
-                return -1;
-            }
-            if((static_cast<char>(c) >= '0') && (static_cast<char>(c) <= '9'))
-            {
-                data[i] = c;
-            }
-            else
-            {
-                // we need to return not consumed character
-                ob.rewind(1);
-                break;
-            }
-
-        }
-        return i;
+        return read(ob, data, size);
     }
 
     size_t readTill(char *data, size_t size, const char* delim)
     {
-        size_t i = 0;
-        size_t delimLen = std::strlen(delim);
-        for ( ; i < size; ++i)
-        {
-            int c = getc(rb);
-            if (c < 0)
-            {
-                return -1;
-            }
-            data[i] = c;
-            if(i >= delimLen && std::strncmp(&data[i - delimLen + 1], delim, delimLen) == 0)
-            {
-                data[i] = '\0';
-                break;
-            }
-
-        }
-        return i;
+        return readTill(rb, data, size, delim);
     }
 
     void setTimeout(uint32_t _timeout)
@@ -142,7 +90,7 @@ public:
 
     int readable(void)
     {
-        return !rb.empty();  // note: look if things are in the buffer
+        return !rb.empty();
     }
 
     int writeable(void)
@@ -161,7 +109,6 @@ private:
     {
         uint8_t data = serial.getc();
         ob.push(data);
-        rb.push(data);
         pushed++;
         oob.signal_set(0x2);
     }
@@ -182,24 +129,29 @@ private:
                         specialSequence->second();
                         break;
                     }
-                    lock();
                     specialSequence++;
-                    unlock();
                 }
+                // character not needed by special sequences, passing it to command response buffer
+                rb.push(data);
             }
-
         }
     }
 
-    bool recveive(Buffer& source, const char* sequence)
+    bool recveiveSequence(Buffer& source, const char* sequence)
     {
         bool res = false;
 
         SpecialSequence seq(sequence);
-
+        Timer timer;
+        timer.start();
         while(true)
         {
             int c = getc(source);
+            while((c < 0) && (static_cast<uint32_t>(timer.read_ms()) < timeout))
+            {
+                c = getc(source);
+            }
+
             if (c < 0)
             {
                 break;
@@ -213,21 +165,65 @@ private:
         return res;
     }
 
-    int getc(Buffer& source)
+    size_t read(Buffer& source, char *data, size_t size)
     {
+        size_t i = 0;
         Timer timer;
         timer.start();
-
-        while (true)
+        for( ; i < size; i++)
         {
-            if (!source.empty())
+            int c = getc(source);
+            while((c < 0) && (static_cast<uint32_t>(timer.read_ms()) < 1000))
             {
-                return source.pop();
+                c = getc(source);
             }
-            if(static_cast<uint32_t>(timer.read_ms()) > timeout)
+            if(c < 0)
             {
-                return -1;
+                i = 0;
+                break;
             }
+            data[i] = c;
+        }
+        return i;
+    }
+
+    size_t readTill(Buffer& source, char *data, size_t size, const char* delim)
+    {
+        size_t i = 0;
+        size_t delimLen = std::strlen(delim);
+        Timer timer;
+        timer.start();
+        for( ; i < size; ++i)
+        {
+            int c = getc(source);
+            while((c < 0) && (static_cast<uint32_t>(timer.read_ms()) < 1000))
+            {
+                c = getc(source);
+            }
+            if(c < 0)
+            {
+                return 0;
+            }
+            data[i] = c;
+            if(i >= delimLen && std::strncmp(&data[i - delimLen + 1], delim, delimLen) == 0)
+            {
+                data[i] = '\0';
+                break;
+            }
+
+        }
+        return i;
+    }
+
+    int getc(Buffer& source)
+    {
+        if(!source.empty())
+        {
+            return source.pop();
+        }
+        else
+        {
+            return -1;
         }
     }
 
@@ -239,22 +235,26 @@ private:
         }
 
         int i = 0;
+        lock();
         for( ; sendBuffer[i]; i++)
         {
             if(serial.putc(sendBuffer[i]) < 0)
             {
-                return false;
+                i = 0;
+                break;
             }
         }
+        unlock();
         return (i != 0);
     }
 
-private:
-    void lock() {
+    void lock()
+    {
         mutex.lock();
     }
 
-    void unlock() {
+    void unlock()
+    {
         mutex.unlock();
     }
 

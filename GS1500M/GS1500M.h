@@ -25,6 +25,19 @@
 
 #include "bufferedat.h"
 #include "WiFiAccessPoint.h"
+#include "Queue.h"
+
+constexpr int GS1500M_SOCKET_COUNT = 16;
+
+struct Packet
+{
+    Packet(uint32_t _len, char* _data)
+        : len(_len), data(_data), offset(0)
+        {};
+    uint32_t len;
+    char* data;
+    uint32_t offset;
+};
 
 class GS1500M
 {
@@ -65,7 +78,8 @@ public:
     bool writeable();
     void attach(Callback<void()> func);
     template <typename T, typename M>
-    void attach(T *obj, M method) {
+    void attach(T *obj, M method)
+    {
         attach(Callback<void()>(obj, method));
     }
 
@@ -78,14 +92,6 @@ private:
 private:
     BufferedAT parser;
     int mode;
-
-    struct packet
-    {
-        struct packet *next;
-        int id;
-        uint32_t len;
-        // data follows
-    } *packets, **packetsEnd;
     int disconnectedId;
 
     char ipBuffer[16];
@@ -93,4 +99,5 @@ private:
     char netmaskBuffer[16];
     char macBuffer[18];
     Callback<void()> stackCallback;
+    rtos::Queue<Packet, 5> socketQueue[GS1500M_SOCKET_COUNT];
 };
