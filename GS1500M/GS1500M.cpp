@@ -76,7 +76,7 @@ bool GS1500M::setMode(int _mode)
 
 bool GS1500M::startup()
 {
-    bool success = reset()
+    return reset()
         && parser.send("ATV1\n")
         && parser.recv("OK")
         && parser.send("ATE0\n")
@@ -84,13 +84,7 @@ bool GS1500M::startup()
         && parser.send("AT+WM=%d\n", mode)
         && parser.recv("OK")
         && parser.send("AT+BDATA=1\n")
-        && parser.recv("OK")
-        ;
-
-    parser.send("AT+NSTAT=?\n");
-    parser.recv("OK");
-
-    return success;
+        && parser.recv("OK");
 }
 
 bool GS1500M::reset(void)
@@ -98,7 +92,7 @@ bool GS1500M::reset(void)
     resetWifi();
     for (int i = 0; i < 2; i++)
     {
-        // if (parser.send("AT+RESET") // AT+RESET _does not work_
+        // if(parser.send("AT+RESET") // AT+RESET _does not work_
         if(parser.send("AT\n")
            && parser.recv("OK"))
         {
@@ -115,7 +109,7 @@ bool GS1500M::dhcp(bool enabled)
         && parser.recv("OK");
 }
 
-bool GS1500M::connect(const char *ap, const char *passPhrase)
+bool GS1500M::connect(const char* ap, const char* passPhrase)
 {
     return parser.send("AT+WPAPSK=%s,%s\n", ap, passPhrase)
            && parser.recv("OK")
@@ -128,7 +122,7 @@ bool GS1500M::disconnect(void)
     return parser.send("ATH\n") && parser.recv("OK");
 }
 
-const char *GS1500M::getIPAddress(void)
+const char* GS1500M::getIPAddress(void)
 {
     //@TODO: parse output
     if(!(parser.send("AT+NSTAT=?\n")
@@ -142,7 +136,7 @@ const char *GS1500M::getIPAddress(void)
     return ipBuffer;
 }
 
-const char *GS1500M::getMACAddress(void)
+const char* GS1500M::getMACAddress(void)
 {
     if(!(parser.send("AT+NSTAT=?\n")
         && parser.recv("MAC=")
@@ -155,7 +149,7 @@ const char *GS1500M::getMACAddress(void)
     return macBuffer;
 }
 
-const char *GS1500M::getGateway()
+const char* GS1500M::getGateway()
 {
     if(!(parser.send("AT+NSTAT=?\n")
         && parser.recv("Gateway=")
@@ -168,7 +162,7 @@ const char *GS1500M::getGateway()
     return gatewayBuffer;
 }
 
-const char *GS1500M::getNetmask()
+const char* GS1500M::getNetmask()
 {
     if(!(parser.send("AT+NSTAT=?\n")
         && parser.recv("SubNet=")
@@ -181,7 +175,7 @@ const char *GS1500M::getNetmask()
     return netmaskBuffer;
 }
 
-int GS1500M::dnslookup(const char *name, char* address)
+int GS1500M::dnslookup(const char* name, char* address)
 {
     return parser.send("AT+DNSLOOKUP=%s\n", name)
           && parser.recv("IP:")
@@ -216,20 +210,20 @@ int GS1500M::scan(WiFiAccessPoint *res, unsigned limit)
     unsigned cnt = 0;
     nsapi_wifi_ap_t ap;
 
-    if (!parser.send("AT+WS\n"))
+    if(!parser.send("AT+WS\n"))
     {
         return NSAPI_ERROR_DEVICE_ERROR;
     }
 
     while(recv_ap(&ap))
     {
-        if (cnt < limit)
+        if(cnt < limit)
         {
             res[cnt] = WiFiAccessPoint(ap);
         }
 
         cnt++;
-        if (limit != 0 && cnt >= limit)
+        if(limit != 0 && cnt >= limit)
         {
             break;
         }
@@ -238,7 +232,7 @@ int GS1500M::scan(WiFiAccessPoint *res, unsigned limit)
     return cnt;
 }
 
-bool GS1500M::open(const char *type, int& id, const char* addr, int port)
+bool GS1500M::open(const char* type, int& id, const char* addr, int port)
 {
     parser.send("AT+NC%s=%s,%d\n", type, addr, port);
     parser.recv("CONNECT ");
@@ -252,7 +246,7 @@ bool GS1500M::open(const char *type, int& id, const char* addr, int port)
     return parser.recv("OK");
 }
 
-bool GS1500M::bind(const char *type, int& id, int port)
+bool GS1500M::bind(const char* type, int& id, int port)
 {
     parser.send("AT+NS%s=%d\n", type, port);
     parser.recv("CONNECT ");
@@ -265,7 +259,7 @@ bool GS1500M::bind(const char *type, int& id, int port)
 bool GS1500M::send(int id, const void *data, uint32_t amount)
 {
     if(parser.send("%c%c%.1x%.4d", HOST_APP_ESC_CHAR, 'Z', id, amount)
-       && parser.write((char*)data, (int)amount)
+       && parser.write(reinterpret_cast<const char*>(data), amount)
        && parser.recv(DATASENDOK))
     {
         return true;
@@ -323,7 +317,7 @@ int32_t GS1500M::recv(int id, void *data, uint32_t amount)
     osEvent evt = socketQueue[id].get(10000);
     if(osEventMessage == evt.status)
     {
-        Packet *q = (Packet*)evt.value.p;
+        Packet *q = reinterpret_cast<Packet*>(evt.value.p);
         if(q->len <= amount)
         {
             // Return and remove full packet
@@ -383,7 +377,7 @@ void GS1500M::attach(Callback<void()> func)
     assert(false); // currently socket callbacks in mbed are useless, so ban usage
 }
 
-bool GS1500M::recv_ap(nsapi_wifi_ap_t *ap)
+bool GS1500M::recv_ap(nsapi_wifi_ap_t* ap)
 {
     //@TODO: Parse GS1500M output
     bool ret = false;

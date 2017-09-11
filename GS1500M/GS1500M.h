@@ -77,7 +77,7 @@ public:
     bool writeable();
     void attach(Callback<void()> func);
     template <typename T, typename M>
-    void attach(T *obj, M method)
+    void attach(T* obj, M method)
     {
         attach(Callback<void()>(obj, method));
     }
@@ -85,7 +85,7 @@ public:
 private:
     void _packet_handler();
     void _oobconnect_handler();
-    bool recv_ap(nsapi_wifi_ap_t *ap);
+    bool recv_ap(nsapi_wifi_ap_t* ap);
     void socketDisconnected();
 
 private:
@@ -93,6 +93,7 @@ private:
     int mode;
     int disconnectedId;
 
+    // all buffers have +1 size for termination character
     char ipBuffer[16];
     char gatewayBuffer[16];
     char netmaskBuffer[16];

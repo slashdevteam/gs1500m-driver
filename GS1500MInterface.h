@@ -58,6 +58,9 @@ public:
     // override NetworkStack to use GS1500M DNS
     nsapi_error_t gethostbyname(const char *name, SocketAddress *address, nsapi_version_t version = NSAPI_UNSPEC);
 
+    // make non-copyable C++11 style
+    GS1500MInterface(const GS1500MInterface& other) = delete;
+    GS1500MInterface& operator=(const GS1500MInterface&) = delete;
 
 protected:
 
