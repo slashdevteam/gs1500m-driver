@@ -18,6 +18,8 @@ using mbed::Callback;
 using mbed::Timer;
 using rtos::Thread;
 
+const int READ_TIMEOUT = 1000;
+
 class BufferedAT
 {
 public:
@@ -173,7 +175,7 @@ private:
         for( ; i < size; i++)
         {
             int c = getc(source);
-            while((c < 0) && (static_cast<uint32_t>(timer.read_ms()) < 1000))
+            while((c < 0) && (static_cast<uint32_t>(timer.read_ms()) < READ_TIMEOUT))
             {
                 c = getc(source);
             }
@@ -196,7 +198,7 @@ private:
         for( ; i < size; ++i)
         {
             int c = getc(source);
-            while((c < 0) && (static_cast<uint32_t>(timer.read_ms()) < 1000))
+            while((c < 0) && (static_cast<uint32_t>(timer.read_ms()) < READ_TIMEOUT))
             {
                 c = getc(source);
             }
