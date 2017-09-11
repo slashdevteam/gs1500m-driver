@@ -31,9 +31,8 @@ constexpr int GS1500M_SOCKET_COUNT = 16;
 
 struct Packet
 {
-    Packet(uint32_t _len, char* _data)
-        : len(_len), data(_data), offset(0)
-        {};
+    Packet(uint32_t _len);
+    ~Packet();
     uint32_t len;
     char* data;
     uint32_t offset;

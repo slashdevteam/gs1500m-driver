@@ -47,6 +47,16 @@ extern "C" WEAK void resetWifi()
     }
 }
 
+Packet::Packet(uint32_t _len)
+  : len(_len), data(new char[_len]), offset(0)
+{
+
+}
+
+Packet::~Packet()
+{
+    delete data;
+}
 
 const char HOST_APP_ESC_CHAR = 0x1B;
 static const char BULKDATAIN[] = {HOST_APP_ESC_CHAR, 'Z'};
@@ -286,14 +296,12 @@ void GS1500M::_packet_handler()
 
     amount = 1000 * amount1000 + 100 * amount100 + 10 * amount10 + amount1;
 
-    char* incomingData = new char[amount];
-    Packet* incoming = new Packet(amount, incomingData);
-    size_t readAmount = parser.readData(incomingData, amount);
+    Packet* incoming = new Packet(amount);
+    size_t readAmount = parser.readData(incoming->data, amount);
 
     if(readAmount == 0 || id == -1)
     {
         delete incoming;
-        delete incomingData;
         return;
     }
 
@@ -323,7 +331,6 @@ int32_t GS1500M::recv(int id, void *data, uint32_t amount)
             // Return and remove full packet
             memcpy(data, q->data + q->offset, q->len);
             uint32_t len = q->len;
-            delete q->data;
             delete q;
             return len;
         }
