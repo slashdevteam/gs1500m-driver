@@ -38,12 +38,10 @@ GS1500MInterface::GS1500MInterface(PinName tx,
 {
     memset(_ids, 0, sizeof(_ids));
     memset(_cbs, 0, sizeof(_cbs));
-    socketSend[0] = std::bind(&GS1500MInterface::tcp_socket_send, this, _1, _2, _3);
-    socketSend[1] = std::bind(&GS1500MInterface::udp_socket_send, this, _1, _2, _3);
 }
 
-int GS1500MInterface::connect(const char *ssid,
-                              const char *pass,
+int GS1500MInterface::connect(const char* ssid,
+                              const char* pass,
                               nsapi_security_t security,
                               uint8_t channel)
 {
@@ -83,7 +81,7 @@ int GS1500MInterface::connect()
     return NSAPI_ERROR_OK;
 }
 
-int GS1500MInterface::set_credentials(const char *ssid, const char *pass, nsapi_security_t security)
+int GS1500MInterface::set_credentials(const char* ssid, const char* pass, nsapi_security_t security)
 {
     memset(ap_ssid, 0, sizeof(ap_ssid));
     strncpy(ap_ssid, ssid, sizeof(ap_ssid));
@@ -96,7 +94,7 @@ int GS1500MInterface::set_credentials(const char *ssid, const char *pass, nsapi_
     return 0;
 }
 
-nsapi_error_t GS1500MInterface::gethostbyname(const char *name, SocketAddress *address, nsapi_version_t version)
+nsapi_error_t GS1500MInterface::gethostbyname(const char* name, SocketAddress* address, nsapi_version_t version)
 {
     gsat.setTimeout(GS1500M_MISC_TIMEOUT);
     char ipBuffer[16] = {0};
@@ -115,29 +113,29 @@ int GS1500MInterface::disconnect()
 {
     gsat.setTimeout(GS1500M_MISC_TIMEOUT);
 
-    if (!gsat.disconnect()) {
+    if(!gsat.disconnect()) {
         return NSAPI_ERROR_DEVICE_ERROR;
     }
 
     return NSAPI_ERROR_OK;
 }
 
-const char *GS1500MInterface::get_ip_address()
+const char* GS1500MInterface::get_ip_address()
 {
     return gsat.getIPAddress();
 }
 
-const char *GS1500MInterface::get_mac_address()
+const char* GS1500MInterface::get_mac_address()
 {
     return gsat.getMACAddress();
 }
 
-const char *GS1500MInterface::get_gateway()
+const char* GS1500MInterface::get_gateway()
 {
     return gsat.getGateway();
 }
 
-const char *GS1500MInterface::get_netmask()
+const char* GS1500MInterface::get_netmask()
 {
     return gsat.getNetmask();
 }
@@ -147,7 +145,7 @@ int8_t GS1500MInterface::get_rssi()
     return gsat.getRSSI();
 }
 
-int GS1500MInterface::scan(WiFiAccessPoint *res, unsigned count)
+int GS1500MInterface::scan(WiFiAccessPoint* res, unsigned count)
 {
     return gsat.scan(res, count);
 }
@@ -161,18 +159,18 @@ struct GS1500M_socket
     SocketAddress addr;
 };
 
-int GS1500MInterface::socket_open(void **handle, nsapi_protocol_t proto)
+int GS1500MInterface::socket_open(void** handle, nsapi_protocol_t proto)
 {
     return init_local_socket(handle, proto, 0);
 }
 
-int GS1500MInterface::init_local_socket(void **handle, nsapi_protocol_t proto, int _idgs)
+int GS1500MInterface::init_local_socket(void** handle, nsapi_protocol_t proto, int _idgs)
 {
     int id = -1;
 
-    for (int i = 0; i < GS1500M_SOCKET_COUNT; i++)
+    for(int i = 0; i < GS1500M_SOCKET_COUNT; i++)
     {
-        if (!_ids[i])
+        if(!_ids[i])
         {
             id = i;
             _ids[i] = true;
@@ -180,13 +178,13 @@ int GS1500MInterface::init_local_socket(void **handle, nsapi_protocol_t proto, i
         }
     }
 
-    if (id == -1)
+    if(id == -1)
     {
         return NSAPI_ERROR_NO_SOCKET;
     }
 
-    struct GS1500M_socket *socket = new struct GS1500M_socket;
-    if (!socket)
+    struct GS1500M_socket* socket = new struct GS1500M_socket;
+    if(!socket)
     {
         return NSAPI_ERROR_NO_SOCKET;
     }
@@ -199,13 +197,13 @@ int GS1500MInterface::init_local_socket(void **handle, nsapi_protocol_t proto, i
     return 0;
 }
 
-int GS1500MInterface::socket_close(void *handle)
+int GS1500MInterface::socket_close(void* handle)
 {
-    struct GS1500M_socket *socket = (struct GS1500M_socket *)handle;
+    struct GS1500M_socket* socket = (struct GS1500M_socket*)handle;
     int err = 0;
     gsat.setTimeout(GS1500M_MISC_TIMEOUT);
 
-    if (!gsat.close(socket->id))
+    if(!gsat.close(socket->id))
     {
         err = NSAPI_ERROR_DEVICE_ERROR;
     }
@@ -215,12 +213,12 @@ int GS1500MInterface::socket_close(void *handle)
     return err;
 }
 
-int GS1500MInterface::socket_bind(void *handle, const SocketAddress &addr)
+int GS1500MInterface::socket_bind(void* handle, const SocketAddress &addr)
 {
-    struct GS1500M_socket *socket = (struct GS1500M_socket *)handle;
+    struct GS1500M_socket* socket = (struct GS1500M_socket*)handle;
     gsat.setTimeout(GS1500M_MISC_TIMEOUT);
 
-    const char *proto = (socket->proto == NSAPI_UDP) ? "UDP" : "TCP";
+    const char* proto = (socket->proto == NSAPI_UDP) ? "UDP" : "TCP";
     if(!gsat.bind(proto, socket->idgs, addr.get_port()))
     {
         return NSAPI_ERROR_DEVICE_ERROR;
@@ -228,18 +226,19 @@ int GS1500MInterface::socket_bind(void *handle, const SocketAddress &addr)
     return 0;
 }
 
-int GS1500MInterface::socket_listen(void *handle, int backlog)
+int GS1500MInterface::socket_listen(void* handle, int backlog)
 {
     return 0;
 }
 
-int GS1500MInterface::socket_connect(void *handle, const SocketAddress &addr)
+int GS1500MInterface::socket_connect(void* handle, const SocketAddress &addr)
 {
-    struct GS1500M_socket *socket = (struct GS1500M_socket *)handle;
+    struct GS1500M_socket* socket = (struct GS1500M_socket*)handle;
     gsat.setTimeout(GS1500M_MISC_TIMEOUT);
 
-    const char *proto = (socket->proto == NSAPI_UDP) ? "UDP" : "TCP";
-    if (!gsat.open(proto, socket->idgs, addr.get_ip_address(), addr.get_port())) {
+    const char* proto = (socket->proto == NSAPI_UDP) ? "UDP" : "TCP";
+    if(!gsat.open(proto, socket->idgs, addr.get_ip_address(), addr.get_port()))
+    {
         return NSAPI_ERROR_DEVICE_ERROR;
     }
 
@@ -248,32 +247,32 @@ int GS1500MInterface::socket_connect(void *handle, const SocketAddress &addr)
     return 0;
 }
 
-int GS1500MInterface::socket_accept(void *server, void **socket, SocketAddress *addr)
+int GS1500MInterface::socket_accept(void* server, void** socket, SocketAddress* addr)
 {
-    struct GS1500M_socket* servSocket = (struct GS1500M_socket *)server;
+    struct GS1500M_socket* servSocket = (struct GS1500M_socket*)server;
 
     char clientAddress[100] = {};
     int clientSocketId;
     gsat.setTimeout(6553);
-    if (!gsat.accept(servSocket->idgs, clientSocketId, clientAddress))
+    if(!gsat.accept(servSocket->idgs, clientSocketId, clientAddress))
     {
         return NSAPI_ERROR_WOULD_BLOCK;
     }
 
     *addr = SocketAddress(clientAddress);
-    struct GS1500M_socket* clientSocket = (struct GS1500M_socket *)*socket;
+    struct GS1500M_socket* clientSocket = (struct GS1500M_socket*)*socket;
     init_local_socket(socket, servSocket->proto, clientSocketId);
     clientSocket->addr = *addr;
     return 0;
 }
 
-int GS1500MInterface::socket_send(void *handle, const void *data, unsigned size)
+int GS1500MInterface::socket_send(void* handle, const void* data, unsigned size)
 {
-    struct GS1500M_socket *socket = (struct GS1500M_socket *)handle;
+    struct GS1500M_socket* socket = (struct GS1500M_socket*)handle;
 
     gsat.setTimeout(GS1500M_SEND_TIMEOUT);
 
-    if (!socketSend[socket->proto](handle, data, size))
+    if(!gsat.send(socket->idgs, data, size))
     {
         return NSAPI_ERROR_DEVICE_ERROR;
     }
@@ -281,29 +280,13 @@ int GS1500MInterface::socket_send(void *handle, const void *data, unsigned size)
     return size;
 }
 
-int GS1500MInterface::udp_socket_send(void *handle, const void *data, unsigned size)
+int GS1500MInterface::socket_recv(void* handle, void* data, unsigned size)
 {
-    struct GS1500M_socket *socket = (struct GS1500M_socket *)handle;
-    gsat.setTimeout(GS1500M_SEND_TIMEOUT);
-
-    return gsat.sendUdp(socket->idgs, socket->addr.get_ip_address(), socket->addr.get_port(), data, size);
-}
-
-int GS1500MInterface::tcp_socket_send(void *handle, const void *data, unsigned size)
-{
-    struct GS1500M_socket *socket = (struct GS1500M_socket *)handle;
-    gsat.setTimeout(GS1500M_SEND_TIMEOUT);
-
-    return gsat.sendTcp(socket->idgs, data, size);
-}
-
-int GS1500MInterface::socket_recv(void *handle, void *data, unsigned size)
-{
-    struct GS1500M_socket *socket = (struct GS1500M_socket *)handle;
+    struct GS1500M_socket* socket = (struct GS1500M_socket*)handle;
     gsat.setTimeout(GS1500M_RECV_TIMEOUT);
 
     int32_t recv = gsat.recv(socket->idgs, data, size);
-    if (recv < 0)
+    if(recv < 0)
     {
         return NSAPI_ERROR_WOULD_BLOCK;
     }
@@ -311,17 +294,17 @@ int GS1500MInterface::socket_recv(void *handle, void *data, unsigned size)
     return recv;
 }
 
-int GS1500MInterface::socket_sendto(void *handle, const SocketAddress &addr, const void *data, unsigned size)
+int GS1500MInterface::socket_sendto(void* handle, const SocketAddress &addr, const void* data, unsigned size)
 {
-    struct GS1500M_socket *socket = (struct GS1500M_socket *)handle;
+    struct GS1500M_socket* socket = (struct GS1500M_socket*)handle;
     return socket_send(socket, data, size);
 }
 
-int GS1500MInterface::socket_recvfrom(void *handle, SocketAddress *addr, void *data, unsigned size)
+int GS1500MInterface::socket_recvfrom(void* handle, SocketAddress* addr, void* data, unsigned size)
 {
-    struct GS1500M_socket *socket = (struct GS1500M_socket *)handle;
+    struct GS1500M_socket* socket = (struct GS1500M_socket*)handle;
     int ret = socket_recv(socket, data, size);
-    if (ret >= 0 && addr)
+    if(ret >= 0 && addr)
     {
         *addr = socket->addr;
     }
@@ -329,18 +312,18 @@ int GS1500MInterface::socket_recvfrom(void *handle, SocketAddress *addr, void *d
     return ret;
 }
 
-void GS1500MInterface::socket_attach(void *handle, void (*callback)(void *), void *data)
+void GS1500MInterface::socket_attach(void* handle, void (*callback)(void*), void* data)
 {
-    struct GS1500M_socket *socket = (struct GS1500M_socket *)handle;
+    struct GS1500M_socket* socket = (struct GS1500M_socket*)handle;
     _cbs[socket->id].callback = callback;
     _cbs[socket->id].data = data;
 }
 
 void GS1500MInterface::event()
 {
-    for (int i = 0; i < GS1500M_SOCKET_COUNT; i++)
+    for(int i = 0; i < GS1500M_SOCKET_COUNT; i++)
     {
-        if (_cbs[i].callback)
+        if(_cbs[i].callback)
         {
             _cbs[i].callback(_cbs[i].data);
         }

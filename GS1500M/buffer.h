@@ -52,7 +52,7 @@ public:
 
 private:
     size_t bsize;
-    size_t head;
-    size_t tail;
+    volatile size_t head;
+    volatile size_t tail;
     ByteBuffer buf;
 };

@@ -25,6 +25,18 @@
 
 #include "bufferedat.h"
 #include "WiFiAccessPoint.h"
+#include "Queue.h"
+
+constexpr int GS1500M_SOCKET_COUNT = 16;
+
+struct Packet
+{
+    Packet(uint32_t _len);
+    ~Packet();
+    uint32_t len;
+    char* data;
+    uint32_t offset;
+};
 
 class GS1500M
 {
@@ -55,8 +67,7 @@ public:
 
     bool open(const char* type, int& id, const char* addr, int port);
     bool bind(const char* type, int& id, int port);
-    bool sendTcp(int id, const void* data, uint32_t amount);
-    bool sendUdp(int id, const char* addr, int port, const void* data, uint32_t amount);
+    bool send(int id, const void* data, uint32_t amount);
     int32_t recv(int id, void* data, uint32_t amount);
     bool accept(int id, int& clientId, char* addr);
     bool close(int id);
@@ -65,32 +76,27 @@ public:
     bool writeable();
     void attach(Callback<void()> func);
     template <typename T, typename M>
-    void attach(T *obj, M method) {
+    void attach(T* obj, M method)
+    {
         attach(Callback<void()>(obj, method));
     }
 
 private:
     void _packet_handler();
     void _oobconnect_handler();
-    bool recv_ap(nsapi_wifi_ap_t *ap);
+    bool recv_ap(nsapi_wifi_ap_t* ap);
     void socketDisconnected();
 
 private:
     BufferedAT parser;
     int mode;
-
-    struct packet
-    {
-        struct packet *next;
-        int id;
-        uint32_t len;
-        // data follows
-    } *packets, **packetsEnd;
     int disconnectedId;
 
+    // all buffers have +1 size for termination character
     char ipBuffer[16];
     char gatewayBuffer[16];
     char netmaskBuffer[16];
     char macBuffer[18];
     Callback<void()> stackCallback;
+    rtos::Queue<Packet, 5> socketQueue[GS1500M_SOCKET_COUNT];
 };

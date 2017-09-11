@@ -47,17 +47,26 @@ extern "C" WEAK void resetWifi()
     }
 }
 
+Packet::Packet(uint32_t _len)
+  : len(_len), data(new char[_len]), offset(0)
+{
+
+}
+
+Packet::~Packet()
+{
+    delete data;
+}
 
 const char HOST_APP_ESC_CHAR = 0x1B;
 static const char BULKDATAIN[] = {HOST_APP_ESC_CHAR, 'Z'};
+static const char DATASENDOK[] = {HOST_APP_ESC_CHAR, 'O'};
 
 GS1500M::GS1500M(PinName tx,
                  PinName rx,
                  int baud)
     : parser(tx, rx, 115200),
       mode(0),
-      packets(0),
-      packetsEnd(&packets),
       disconnectedId(-1)
 {
     parser.registerSequence(BULKDATAIN, callback(this, &GS1500M::_packet_handler));
@@ -77,7 +86,7 @@ bool GS1500M::setMode(int _mode)
 
 bool GS1500M::startup()
 {
-    bool success = reset()
+    return reset()
         && parser.send("ATV1\n")
         && parser.recv("OK")
         && parser.send("ATE0\n")
@@ -85,13 +94,7 @@ bool GS1500M::startup()
         && parser.send("AT+WM=%d\n", mode)
         && parser.recv("OK")
         && parser.send("AT+BDATA=1\n")
-        && parser.recv("OK")
-        ;
-
-    parser.send("AT+NSTAT=?\n");
-    parser.recv("OK");
-
-    return success;
+        && parser.recv("OK");
 }
 
 bool GS1500M::reset(void)
@@ -99,9 +102,9 @@ bool GS1500M::reset(void)
     resetWifi();
     for (int i = 0; i < 2; i++)
     {
-        // if (parser.send("AT+RESET") // AT+RESET _does not work_
-        if (parser.send("AT\n")
-            && parser.recv("OK"))
+        // if(parser.send("AT+RESET") // AT+RESET _does not work_
+        if(parser.send("AT\n")
+           && parser.recv("OK"))
         {
             return true;
         }
@@ -116,21 +119,12 @@ bool GS1500M::dhcp(bool enabled)
         && parser.recv("OK");
 }
 
-bool GS1500M::connect(const char *ap, const char *passPhrase)
+bool GS1500M::connect(const char* ap, const char* passPhrase)
 {
-    bool ret = parser.send("AT+WPAPSK=%s,%s\n", ap, passPhrase)
-                && parser.recv("OK");
-
-    for (uint32_t i = 0; i < 2; i++)
-    {
-        ret = parser.send("AT+WA=%s\n", ap)
-                && parser.recv("OK");
-        if(ret)
-        {
-            break;
-        }
-    }
-    return ret;
+    return parser.send("AT+WPAPSK=%s,%s\n", ap, passPhrase)
+           && parser.recv("OK")
+           && parser.send("AT+WA=%s\n", ap)
+           && parser.recv("OK");
 }
 
 bool GS1500M::disconnect(void)
@@ -138,13 +132,13 @@ bool GS1500M::disconnect(void)
     return parser.send("ATH\n") && parser.recv("OK");
 }
 
-const char *GS1500M::getIPAddress(void)
+const char* GS1500M::getIPAddress(void)
 {
     //@TODO: parse output
     if(!(parser.send("AT+NSTAT=?\n")
-        && parser.recv("IP addr=")
-        && parser.readTill(ipBuffer, sizeof(ipBuffer)-1, "\r")
-        && parser.recv("OK")))
+       && parser.recv("IP addr=")
+       && parser.readTill(ipBuffer, sizeof(ipBuffer)-1, "\r")
+       && parser.recv("OK")))
     {
         return 0;
     }
@@ -152,7 +146,7 @@ const char *GS1500M::getIPAddress(void)
     return ipBuffer;
 }
 
-const char *GS1500M::getMACAddress(void)
+const char* GS1500M::getMACAddress(void)
 {
     if(!(parser.send("AT+NSTAT=?\n")
         && parser.recv("MAC=")
@@ -165,7 +159,7 @@ const char *GS1500M::getMACAddress(void)
     return macBuffer;
 }
 
-const char *GS1500M::getGateway()
+const char* GS1500M::getGateway()
 {
     if(!(parser.send("AT+NSTAT=?\n")
         && parser.recv("Gateway=")
@@ -178,7 +172,7 @@ const char *GS1500M::getGateway()
     return gatewayBuffer;
 }
 
-const char *GS1500M::getNetmask()
+const char* GS1500M::getNetmask()
 {
     if(!(parser.send("AT+NSTAT=?\n")
         && parser.recv("SubNet=")
@@ -191,7 +185,7 @@ const char *GS1500M::getNetmask()
     return netmaskBuffer;
 }
 
-int GS1500M::dnslookup(const char *name, char* address)
+int GS1500M::dnslookup(const char* name, char* address)
 {
     return parser.send("AT+DNSLOOKUP=%s\n", name)
           && parser.recv("IP:")
@@ -226,20 +220,20 @@ int GS1500M::scan(WiFiAccessPoint *res, unsigned limit)
     unsigned cnt = 0;
     nsapi_wifi_ap_t ap;
 
-    if (!parser.send("AT+WS\n"))
+    if(!parser.send("AT+WS\n"))
     {
         return NSAPI_ERROR_DEVICE_ERROR;
     }
 
-    while (recv_ap(&ap))
+    while(recv_ap(&ap))
     {
-        if (cnt < limit)
+        if(cnt < limit)
         {
             res[cnt] = WiFiAccessPoint(ap);
         }
 
         cnt++;
-        if (limit != 0 && cnt >= limit)
+        if(limit != 0 && cnt >= limit)
         {
             break;
         }
@@ -248,45 +242,35 @@ int GS1500M::scan(WiFiAccessPoint *res, unsigned limit)
     return cnt;
 }
 
-bool GS1500M::open(const char *type, int& id, const char* addr, int port)
+bool GS1500M::open(const char* type, int& id, const char* addr, int port)
 {
     parser.send("AT+NC%s=%s,%d\n", type, addr, port);
     parser.recv("CONNECT ");
-    char idraw[3]; // GS has max 16 sockets, so @max 2 digits + null/\n
+    char idraw[2]; // CID is 1 hex digit + null/\n
     parser.readTill(idraw, sizeof(idraw), "\n");
-    sscanf(idraw, "%d", &id);
+    sscanf(idraw, "%1x", &id);
+    parser.recv("OK");
+    // Apparently, against GS documentation, SO_KEEPALIVE (param 8)
+    // must be enabled for "default on" TCP_KEEPALIVE to really work!
+    parser.send("AT+SETSOCKOPT=%x,65535,8,1,4\n", id);
     return parser.recv("OK");
 }
 
-bool GS1500M::bind(const char *type, int& id, int port)
+bool GS1500M::bind(const char* type, int& id, int port)
 {
     parser.send("AT+NS%s=%d\n", type, port);
     parser.recv("CONNECT ");
-    char idraw[3]; // GS has max 16 sockets, so @max 2 digits + null/\n
+    char idraw[2]; // CID is 1 hex digit + null/\n
     parser.readTill(idraw, sizeof(idraw), "\n");
-    sscanf(idraw, "%d", &id);
+    sscanf(idraw, "%1x", &id);
     return parser.recv("OK");
 }
 
-bool GS1500M::sendTcp(int id, const void *data, uint32_t amount)
+bool GS1500M::send(int id, const void *data, uint32_t amount)
 {
-    if (parser.send("%c%c%.1d%.4d", HOST_APP_ESC_CHAR, 'Z', id, amount)
-        && parser.write((char*)data, (int)amount))
-        // normally send should read <HOST_APP_ESC_CHAR>O sequence, but this interferes with mbed IRQ handling
-        // and causes character losses on UART so <HOST_APP_ESC_CHAR>O is read in recv function
-    {
-        return true;
-    }
-
-    return false;
-}
-
-bool GS1500M::sendUdp(int id, const char* addr, int port, const void *data, uint32_t amount)
-{
-    if (parser.send("%c%c%.1d%.4d", HOST_APP_ESC_CHAR, 'Z', id, amount)
-        && parser.write((char*)data, (int)amount))
-        // normally send should read <HOST_APP_ESC_CHAR>O sequence, but this interferes with mbed IRQ handling
-        // and causes character losses on UART so <HOST_APP_ESC_CHAR>O is read in recv function
+    if(parser.send("%c%c%.1x%.4d", HOST_APP_ESC_CHAR, 'Z', id, amount)
+       && parser.write(reinterpret_cast<const char*>(data), amount)
+       && parser.recv(DATASENDOK))
     {
         return true;
     }
@@ -296,41 +280,32 @@ bool GS1500M::sendUdp(int id, const char* addr, int port, const void *data, uint
 
 void GS1500M::_packet_handler()
 {
-    int id;
-    int amount1000;
-    int amount100;
-    int amount10;
-    int amount1;
-    int amount;
-    char idamount[6] = {0}; // <max 2 digits for socket><4 digits for len>+\0
-    // parse out the packet
-    if (!parser.readDigits(idamount, sizeof(idamount) - 1))
+    int id = -1;
+    int amount1000 = 0;
+    int amount100 = 0;
+    int amount10 = 0;
+    int amount1 = 0;
+    int amount = 0;
+    char idamount[6] = {0}; // <1 hex for CID><4 digits for len>+\0
+    if(parser.readData(idamount, 5) == 0)
     {
         return;
     }
 
-    sscanf(reinterpret_cast<char*>(idamount), "%1d%1d%1d%1d%1d", &id, &amount1000, &amount100, &amount10, &amount1);
+    sscanf(reinterpret_cast<char*>(idamount), "%1x%1d%1d%1d%1d", &id, &amount1000, &amount100, &amount10, &amount1);
 
     amount = 1000 * amount1000 + 100 * amount100 + 10 * amount10 + amount1;
-    struct packet *packet = (struct packet*)malloc(sizeof(struct packet) + amount);
-    if (!packet)
+
+    Packet* incoming = new Packet(amount);
+    size_t readAmount = parser.readData(incoming->data, amount);
+
+    if(readAmount == 0 || id == -1)
     {
+        delete incoming;
         return;
     }
 
-    packet->id = id;
-    packet->len = amount;
-    packet->next = 0;
-
-    if (!(parser.readData((char*)(packet + 1), amount)))
-    {
-        free(packet);
-        return;
-    }
-
-    // append to packet list
-    *packetsEnd = packet;
-    packetsEnd = &packet->next;
+    socketQueue[id].put(incoming);
 }
 
 bool GS1500M::accept(int id, int& clientId, char* addr)
@@ -340,72 +315,52 @@ bool GS1500M::accept(int id, int& clientId, char* addr)
     parser.recv("CONNECT ");
     char ids[5];
     parser.readTill(ids, 5, "\n");
-    sscanf(ids, "%d %d", &localServSocketId, &clientId);
+    sscanf(ids, "%x %d", &localServSocketId, &clientId);
     return (localServSocketId == id);
 }
 
 
 int32_t GS1500M::recv(int id, void *data, uint32_t amount)
 {
-
-    parser.recv("\033O");
-    Timer timer;
-    timer.start();
-    while(true)
+    osEvent evt = socketQueue[id].get(10000);
+    if(osEventMessage == evt.status)
     {
-        // check if any packets are ready for us
-        for (struct packet **p = &packets; *p; p = &(*p)->next)
+        Packet *q = reinterpret_cast<Packet*>(evt.value.p);
+        if(q->len <= amount)
         {
-            if ((*p)->id == id) {
-                struct packet *q = *p;
-
-                if (q->len <= amount)
-                { // Return and remove full packet
-                    uint8_t* realDataPtr = reinterpret_cast<uint8_t*>(q+1);
-                    memcpy(data, realDataPtr, q->len);
-
-                    if (packetsEnd == &(*p)->next)
-                    {
-                        packetsEnd = p;
-                    }
-                    *p = (*p)->next;
-
-                    uint32_t len = q->len;
-                    free(q);
-                    return len;
-                }
-                else
-                { // return only partial packet
-                    memcpy(data, q+1, amount);
-
-                    q->len -= amount;
-                    memmove(q+1, (uint8_t*)(q+1) + amount, q->len);
-
-                    return amount;
-                }
-            }
+            // Return and remove full packet
+            memcpy(data, q->data + q->offset, q->len);
+            uint32_t len = q->len;
+            delete q;
+            return len;
         }
-
-        if(timer.read_ms() > 4000)
+        else
         {
-            return -7;
+            // return only partial packet and put the event back in queue with high prio
+            // to be again taken from queue on next recv
+            memcpy(data, q->data + q->offset, amount);
+
+            // update length and data pointer
+            q->offset += amount;
+            q->len -= amount;
+            socketQueue[id].put(q, 0, 255);
+            return amount;
         }
     }
-    return -2;
+    else
+    {
+        return -1;
+    }
 }
 
 bool GS1500M::close(int id)
 {
-    //May take a second try if device is busy
-    for (unsigned i = 0; i < 2; i++)
+    if(parser.send("AT+NCLOSE=%x\n", id)
+       && parser.recv("OK"))
     {
-        if (parser.send("AT+NCLOSE=%d\n", id)
-            && parser.recv("OK"))
-        {
-            return true;
-        }
+        return true;
     }
-
+    //@TODO: check socket queue for any remaining data
     return false;
 }
 
@@ -429,7 +384,7 @@ void GS1500M::attach(Callback<void()> func)
     assert(false); // currently socket callbacks in mbed are useless, so ban usage
 }
 
-bool GS1500M::recv_ap(nsapi_wifi_ap_t *ap)
+bool GS1500M::recv_ap(nsapi_wifi_ap_t* ap)
 {
     //@TODO: Parse GS1500M output
     bool ret = false;

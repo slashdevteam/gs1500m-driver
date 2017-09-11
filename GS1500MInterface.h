@@ -25,12 +25,6 @@
 
 #include "mbed.h"
 #include "GS1500M.h"
-#include <functional>
-
-constexpr int GS1500M_SOCKET_COUNT = 16;
-using SocketSend = std::function<int(void* handle, const void* data, unsigned size)>;
-using SocketCallback = std::function<void(const void* data, unsigned size)>;
-
 
 class GS1500MInterface : public NetworkStack, public WiFiInterface
 {
@@ -64,6 +58,9 @@ public:
     // override NetworkStack to use GS1500M DNS
     nsapi_error_t gethostbyname(const char *name, SocketAddress *address, nsapi_version_t version = NSAPI_UNSPEC);
 
+    // make non-copyable C++11 style
+    GS1500MInterface(const GS1500MInterface& other) = delete;
+    GS1500MInterface& operator=(const GS1500MInterface&) = delete;
 
 protected:
 
@@ -79,11 +76,9 @@ protected:
     virtual int socket_recvfrom(void* handle, SocketAddress* address, void* buffer, unsigned size);
     virtual void socket_attach(void* handle, void (*callback)(void*), void* data);
 
-    int udp_socket_send(void *handle, const void *data, unsigned size);
-    int tcp_socket_send(void *handle, const void *data, unsigned size);
     int init_local_socket(void **handle, nsapi_protocol_t proto, int _idgs);
 
-    virtual NetworkStack *get_stack()
+    virtual NetworkStack* get_stack()
     {
         return this;
     }
@@ -91,7 +86,6 @@ protected:
 private:
     GS1500M gsat;
     bool _ids[GS1500M_SOCKET_COUNT];
-    SocketSend socketSend[2];
 
     char ap_ssid[33]; /* 32 is what 802.11 defines as longest possible name; +1 for the \0 */
     nsapi_security_t ap_sec;
@@ -102,7 +96,7 @@ private:
 
     struct
     {
-        void (*callback)(void *);
-        void *data;
+        void (*callback)(void*);
+        void* data;
     } _cbs[GS1500M_SOCKET_COUNT];
 };
