@@ -269,10 +269,13 @@ bool GS1500M::bind(const char* type, int& id, int port)
 bool GS1500M::send(int id, const void *data, uint32_t amount)
 {
     if(parser.send("%c%c%.1x%.4d", HOST_APP_ESC_CHAR, 'Z', id, amount)
-       && parser.write(reinterpret_cast<const char*>(data), amount)
-       && parser.recv(DATASENDOK))
+       && parser.write(reinterpret_cast<const char*>(data), amount))
     {
-        return true;
+        if(stackCallback)
+        {
+            stackCallback();
+        }
+        return parser.recv(DATASENDOK);
     }
 
     return false;
@@ -306,6 +309,10 @@ void GS1500M::_packet_handler()
     }
 
     socketQueue[id].put(incoming);
+    if(stackCallback)
+    {
+        stackCallback();
+    }
 }
 
 bool GS1500M::accept(int id, int& clientId, char* addr)
@@ -322,7 +329,7 @@ bool GS1500M::accept(int id, int& clientId, char* addr)
 
 int32_t GS1500M::recv(int id, void *data, uint32_t amount)
 {
-    osEvent evt = socketQueue[id].get(10000);
+    osEvent evt = socketQueue[id].get(10);
     if(osEventMessage == evt.status)
     {
         Packet *q = reinterpret_cast<Packet*>(evt.value.p);
@@ -364,9 +371,9 @@ bool GS1500M::close(int id)
     return false;
 }
 
-void GS1500M::setTimeout(uint32_t timeout_ms)
+void GS1500M::setTimeout(uint32_t _timeoutMs)
 {
-    parser.setTimeout(timeout_ms);
+    parser.setTimeout(_timeoutMs);
 }
 
 bool GS1500M::readable()
@@ -381,7 +388,7 @@ bool GS1500M::writeable()
 
 void GS1500M::attach(Callback<void()> func)
 {
-    assert(false); // currently socket callbacks in mbed are useless, so ban usage
+    stackCallback = func;
 }
 
 bool GS1500M::recv_ap(nsapi_wifi_ap_t* ap)

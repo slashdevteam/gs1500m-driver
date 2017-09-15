@@ -28,7 +28,7 @@ public:
           oob(osPriorityHigh, 8192/2),
           ob(4*1512),
           rb(512),
-          timeout(100),
+          timeout(1000),
           pushed(0)
     {
         oob.start(callback(this, &BufferedAT::checkOob));
@@ -265,7 +265,7 @@ private:
     Thread oob;
     Buffer ob;
     Buffer rb;
-    char sendBuffer[256];
+    char sendBuffer[2*1512];
 
     uint32_t timeout;
     volatile int pushed;
