@@ -24,7 +24,7 @@
 #include <string.h>
 #include "GS1500MInterface.h"
 
-const uint32_t GS1500M_CONNECT_TIMEOUT = 15000;
+const uint32_t GS1500M_CONNECT_TIMEOUT = 25000;
 const uint32_t GS1500M_SEND_TIMEOUT    = 500;
 const uint32_t GS1500M_RECV_TIMEOUT    = 500;
 const uint32_t GS1500M_MISC_TIMEOUT    = 500;
@@ -274,7 +274,8 @@ int GS1500MInterface::socket_send(void* handle, const void* data, unsigned size)
 
     gsat.setTimeout(GS1500M_SEND_TIMEOUT);
 
-    if(!gsat.send(socket->idgs, data, size))
+    size_t sent = gsat.send(socket->idgs, data, size);
+    if(sent == 0)
     {
         return NSAPI_ERROR_DEVICE_ERROR;
     }

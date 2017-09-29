@@ -67,7 +67,7 @@ public:
 
     bool open(const char* type, int& id, const char* addr, int port);
     bool bind(const char* type, int& id, int port);
-    bool send(int id, const void* data, uint32_t amount);
+    size_t send(int id, const void* data, uint32_t amount);
     int32_t recv(int id, void* data, uint32_t amount);
     bool accept(int id, int& clientId, char* addr);
     bool close(int id);
@@ -86,6 +86,7 @@ private:
     void _oobconnect_handler();
     bool recv_ap(nsapi_wifi_ap_t* ap);
     void socketDisconnected();
+    size_t sendPart(int id, const char* data, uint32_t amount);
 
 private:
     BufferedAT parser;
@@ -98,4 +99,7 @@ private:
     char macBuffer[18];
     Callback<void()> stackCallback;
     rtos::Queue<Packet, 5> socketQueue[GS1500M_SOCKET_COUNT];
+
+    char ssid[33]; /* 32 is what 802.11 defines as longest possible name; +1 for the \0 */
+    char pass[64]; /* The longest allowed passphrase */
 };
