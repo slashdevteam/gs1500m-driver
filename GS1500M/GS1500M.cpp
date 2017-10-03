@@ -43,7 +43,7 @@ extern "C" WEAK void resetWifi()
     {
         gpio_t gsPD;
         gpio_init_in(&gsPD, PTD5);
-        wait(.3);
+        wait(1);
     }
 }
 
@@ -58,6 +58,7 @@ Packet::~Packet()
     delete data;
 }
 
+const size_t MAX_OUTGOING_PACKET_SIZE = 1400;
 const char HOST_APP_ESC_CHAR = 0x1B;
 static const char BULKDATAIN[] = {HOST_APP_ESC_CHAR, 'Z'};
 static const char DATASENDOK[] = {HOST_APP_ESC_CHAR, 'O'};
@@ -94,6 +95,8 @@ bool GS1500M::startup()
         && parser.send("AT+WM=%d\n", mode)
         && parser.recv("OK")
         && parser.send("AT+BDATA=1\n")
+        && parser.recv("OK")
+        && parser.send("AT+WST=300,2000\n")
         && parser.recv("OK");
 }
 
@@ -121,14 +124,46 @@ bool GS1500M::dhcp(bool enabled)
 
 bool GS1500M::connect(const char* ap, const char* passPhrase)
 {
-    return parser.send("AT+WPAPSK=%s,%s\n", ap, passPhrase)
-           && parser.recv("OK")
-           && parser.send("AT+WA=%s\n", ap)
-           && parser.recv("OK");
+    bool ret = false;
+    if(0 == std::strncmp(ssid, ap, sizeof(ssid))
+       && 0 == std::strncmp(pass, passPhrase, sizeof(pass)))
+    {
+        ret = parser.send("ATZ0\n")
+               && parser.recv("OK")
+               && parser.send("AT+WA=%s\n", ssid)
+               && parser.recv("OK")
+               && parser.send("AT+WRXPS=0\n")
+               && parser.recv("OK");
+    }
+    else
+    {
+        ret = parser.send("AT+WPAPSK=%s,%s\n", ap, passPhrase)
+               && parser.recv("OK")
+               && parser.send("AT+WA=%s\n", ap)
+               && parser.recv("OK")
+               && parser.send("AT+WRXPS=0\n")
+               && parser.recv("OK");
+        if(ret)
+        {
+            parser.send("AT&W0\n");
+            parser.recv("OK");
+            parser.send("AT&Y0\n");
+            parser.recv("OK");
+            std::strncpy(ssid, ap, sizeof(ssid));
+            std::strncpy(pass, passPhrase, sizeof(pass));
+        }
+    }
+
+    if(ret)
+    {
+        parser.send("AT+DGPIO=30,1\n");
+    }
+    return ret;
 }
 
 bool GS1500M::disconnect(void)
 {
+    parser.send("AT+DGPIO=30,0\n");
     return parser.send("ATH\n") && parser.recv("OK");
 }
 
@@ -266,19 +301,49 @@ bool GS1500M::bind(const char* type, int& id, int port)
     return parser.recv("OK");
 }
 
-bool GS1500M::send(int id, const void *data, uint32_t amount)
+size_t GS1500M::send(int id, const void *data, uint32_t amount)
+{
+    size_t amoutToSend = amount;
+    const char* charData = reinterpret_cast<const char*>(data);
+
+    while(amoutToSend > MAX_OUTGOING_PACKET_SIZE)
+    {
+        size_t part = sendPart(id, charData, MAX_OUTGOING_PACKET_SIZE);
+        if(part != 0)
+        {
+            amoutToSend -= MAX_OUTGOING_PACKET_SIZE;
+            charData += MAX_OUTGOING_PACKET_SIZE;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    if(sendPart(id, charData, amoutToSend) != 0)
+    {
+        return amount;
+    }
+
+    return 0;
+}
+
+size_t GS1500M::sendPart(int id, const char* data, uint32_t amount)
 {
     if(parser.send("%c%c%.1x%.4d", HOST_APP_ESC_CHAR, 'Z', id, amount)
-       && parser.write(reinterpret_cast<const char*>(data), amount))
+       && parser.write(data, amount))
     {
         if(stackCallback)
         {
             stackCallback();
         }
-        return parser.recv(DATASENDOK);
+        if(parser.recv(DATASENDOK))
+        {
+            return amount;
+        }
     }
 
-    return false;
+    return 0;
 }
 
 void GS1500M::_packet_handler()
