@@ -38,6 +38,7 @@ GS1500MInterface::GS1500MInterface(PinName tx,
 {
     memset(_ids, 0, sizeof(_ids));
     memset(_cbs, 0, sizeof(_cbs));
+    gsat.attach(mbed::callback(this, &GS1500MInterface::event));
 }
 
 int GS1500MInterface::connect(const char* ssid,
@@ -96,7 +97,7 @@ int GS1500MInterface::set_credentials(const char* ssid, const char* pass, nsapi_
 
 nsapi_error_t GS1500MInterface::gethostbyname(const char* name, SocketAddress* address, nsapi_version_t version)
 {
-    gsat.setTimeout(GS1500M_MISC_TIMEOUT);
+    gsat.setTimeout(10*GS1500M_MISC_TIMEOUT);
     char ipBuffer[16] = {0};
     int ret = gsat.dnslookup(name, ipBuffer);
     address->set_ip_address(ipBuffer);
@@ -113,7 +114,8 @@ int GS1500MInterface::disconnect()
 {
     gsat.setTimeout(GS1500M_MISC_TIMEOUT);
 
-    if(!gsat.disconnect()) {
+    if(!gsat.disconnect())
+    {
         return NSAPI_ERROR_DEVICE_ERROR;
     }
 
@@ -234,7 +236,7 @@ int GS1500MInterface::socket_listen(void* handle, int backlog)
 int GS1500MInterface::socket_connect(void* handle, const SocketAddress &addr)
 {
     struct GS1500M_socket* socket = (struct GS1500M_socket*)handle;
-    gsat.setTimeout(GS1500M_MISC_TIMEOUT);
+    gsat.setTimeout(2*GS1500M_MISC_TIMEOUT);
 
     const char* proto = (socket->proto == NSAPI_UDP) ? "UDP" : "TCP";
     if(!gsat.open(proto, socket->idgs, addr.get_ip_address(), addr.get_port()))

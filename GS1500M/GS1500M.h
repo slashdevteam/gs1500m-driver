@@ -71,7 +71,7 @@ public:
     int32_t recv(int id, void* data, uint32_t amount);
     bool accept(int id, int& clientId, char* addr);
     bool close(int id);
-    void setTimeout(uint32_t timeout_ms);
+    void setTimeout(uint32_t _timeoutMs);
     bool readable();
     bool writeable();
     void attach(Callback<void()> func);
@@ -91,7 +91,6 @@ private:
     BufferedAT parser;
     int mode;
     int disconnectedId;
-
     // all buffers have +1 size for termination character
     char ipBuffer[16];
     char gatewayBuffer[16];
