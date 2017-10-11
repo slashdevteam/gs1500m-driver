@@ -69,7 +69,7 @@ int GS1500MInterface::connect()
         return NSAPI_ERROR_DHCP_FAILURE;
     }
 
-    if(!gsat.connect(ap_ssid, ap_pass))
+    if(!gsat.connect(ap_ssid, ap_pass, ap_sec))
     {
         return NSAPI_ERROR_NO_CONNECTION;
     }

@@ -51,7 +51,7 @@ public:
     bool startup();
     bool reset();
     bool dhcp(bool enabled);
-    bool connect(const char* ap, const char* passPhrase);
+    bool connect(const char* ap, const char* passPhrase, nsapi_security_t security);
     bool disconnect();
     bool isConnected();
 

@@ -122,7 +122,7 @@ bool GS1500M::dhcp(bool enabled)
         && parser.recv("OK");
 }
 
-bool GS1500M::connect(const char* ap, const char* passPhrase)
+bool GS1500M::connect(const char* ap, const char* passPhrase, nsapi_security_t security)
 {
     bool ret = false;
     if(0 == std::strncmp(ssid, ap, sizeof(ssid))
@@ -137,12 +137,38 @@ bool GS1500M::connect(const char* ap, const char* passPhrase)
     }
     else
     {
-        ret = parser.send("AT+WPAPSK=%s,%s\n", ap, passPhrase)
-               && parser.recv("OK")
-               && parser.send("AT+WA=%s\n", ap)
+        bool securityOk = false;
+        // allowed modes are NONE, WEP (Open only), WPA, WPA2, WPA_WPA2 (PPP not supported)
+        switch(security)
+        {
+            case NSAPI_SECURITY_NONE:
+                securityOk = true;
+                break;
+            case NSAPI_SECURITY_WEP: // WEP (Open only)
+                securityOk = parser.send("AT+WAUTH=1\n") // 1 = WEP (Open only)
+                             && parser.recv("OK")
+                             && parser.send("AT+WWEP1=%s\n", passPhrase)
+                             && parser.recv("OK");
+                break;
+            case NSAPI_SECURITY_WPA:  // intentional fall-through
+            case NSAPI_SECURITY_WPA2: // intentional fall-through
+            case NSAPI_SECURITY_WPA_WPA2:
+                securityOk = parser.send("AT+WPAPSK=%s,%s\n", ap, passPhrase)
+                             && parser.recv("OK");
+                break;
+            default:
+                securityOk = false;
+                break;
+        }
+
+        if(securityOk)
+        {
+            ret = parser.send("AT+WA=%s\n", ap)
                && parser.recv("OK")
                && parser.send("AT+WRXPS=0\n")
                && parser.recv("OK");
+        }
+
         if(ret)
         {
             parser.send("AT&W0\n");
