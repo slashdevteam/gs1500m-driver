@@ -22,6 +22,7 @@
  */
 
 #include <string.h>
+#include <functional>
 #include "GS1500MInterface.h"
 
 const uint32_t GS1500M_CONNECT_TIMEOUT = 25000;
